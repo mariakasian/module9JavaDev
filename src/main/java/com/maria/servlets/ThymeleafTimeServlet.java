@@ -43,30 +43,11 @@ public class ThymeleafTimeServlet extends HttpServlet {
 
         Context simpleContext = new Context(
                 req.getLocale(),
-                Map.of("dateTimes", getLastTimeZones(req, resp))
+                Map.of("dateTimes", getDateTimes(req, resp))
         );
 
         engine.process("time", simpleContext, resp.getWriter());
         resp.getWriter().close();
-    }
-
-    private List<String> getLastTimeZones(HttpServletRequest req, HttpServletResponse resp) {
-        List<String> cookiesValues = new ArrayList<>();
-        List<String> dateTimesFromCookies = new ArrayList<>();
-        if (getCookies(req).size() == 0) {
-            return new ArrayList<>(getDateTimes(req, resp));
-        } else {
-            for (Map.Entry<String, String> entry : Objects.requireNonNull(getCookies(req)).entrySet()) {
-                if ("lastTimezone".equals(entry.getKey())) {
-                    cookiesValues.add(entry.getValue());
-                }
-            }
-            for (String cookieValue : Objects.requireNonNull(cookiesValues)) {
-                dateTimesFromCookies.add(instant.atZone(ZoneId.of(cookieValue))
-                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")));
-            }
-            return dateTimesFromCookies;
-        }
     }
 
     private Map<String, String> getCookies(HttpServletRequest req) {
@@ -84,6 +65,7 @@ public class ThymeleafTimeServlet extends HttpServlet {
     private List<String> getDateTimes(HttpServletRequest req, HttpServletResponse resp) {
         String[] timezonesParams = req.getParameterValues("timezone");
         List<String> dateTimes = new ArrayList<>();
+        List<String> cookiesValues = new ArrayList<>();
         String offset;
         if (timezonesParams != null) {
             for (String timezone : timezonesParams) {
@@ -100,8 +82,20 @@ public class ThymeleafTimeServlet extends HttpServlet {
                 resp.addCookie(new Cookie("lastTimezone", "UTC" + offset));
             }
         } else {
-            dateTimes.add(instant.atZone(ZoneId.of("UTC"))
-                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")));
+            if (getCookies(req).size() == 0) {
+                dateTimes.add(instant.atZone(ZoneId.of("UTC"))
+                        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")));
+            } else {
+                for (Map.Entry<String, String> entry : Objects.requireNonNull(getCookies(req)).entrySet()) {
+                    if ("lastTimezone".equals(entry.getKey())) {
+                        cookiesValues.add(entry.getValue());
+                    }
+                }
+                for (String cookieValue : Objects.requireNonNull(cookiesValues)) {
+                    dateTimes.add(instant.atZone(ZoneId.of(cookieValue))
+                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")));
+                }
+            }
         }
         return dateTimes;
     }
