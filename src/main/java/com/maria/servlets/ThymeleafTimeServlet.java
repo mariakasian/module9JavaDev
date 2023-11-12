@@ -50,24 +50,13 @@ public class ThymeleafTimeServlet extends HttpServlet {
         resp.getWriter().close();
     }
 
-    private Map<String, String> getCookies(HttpServletRequest req) {
-        Cookie[] cookies = req.getCookies();
-        Map<String, String> cookiesMap = new HashMap<>();
-        if (cookies == null) {
-            return Collections.emptyMap();
-        }
-        for (Cookie cookie : cookies) {
-            cookiesMap.put(cookie.getName(), cookie.getValue());
-        }
-        return cookiesMap;
-    }
-
     private List<String> getDateTimes(HttpServletRequest req, HttpServletResponse resp) {
         String[] timezonesParams = req.getParameterValues("timezone");
         List<String> dateTimes = new ArrayList<>();
         List<String> cookiesValues = new ArrayList<>();
         String offset;
-        if (timezonesParams != null) {
+
+        if (timezonesParams != null) { //Якщо є параметри - виводимо час згідно з параметрами і додаємо в кукі.
             for (String timezone : timezonesParams) {
                 String sign = timezone.substring(3, 4);
                 int hoursOffset = Integer.parseInt(timezone.substring(4));
@@ -82,10 +71,10 @@ public class ThymeleafTimeServlet extends HttpServlet {
                 resp.addCookie(new Cookie("lastTimezone", "UTC" + offset));
             }
         } else {
-            if (getCookies(req).size() == 0) {
+            if (getCookies(req).size() == 0) {  // Якщо немає параметрів і в кукі ще немає нічого - виводимо просто UTC
                 dateTimes.add(instant.atZone(ZoneId.of("UTC"))
                         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")));
-            } else {
+            } else { // Якщо немає параметрів, але є кукі - виводимо по інфі із кукі
                 for (Map.Entry<String, String> entry : Objects.requireNonNull(getCookies(req)).entrySet()) {
                     if ("lastTimezone".equals(entry.getKey())) {
                         cookiesValues.add(entry.getValue());
@@ -98,5 +87,17 @@ public class ThymeleafTimeServlet extends HttpServlet {
             }
         }
         return dateTimes;
+    }
+
+    private Map<String, String> getCookies(HttpServletRequest req) {
+        Cookie[] cookies = req.getCookies();
+        Map<String, String> cookiesMap = new HashMap<>();
+        if (cookies == null) {
+            return Collections.emptyMap();
+        }
+        for (Cookie cookie : cookies) {
+            cookiesMap.put(cookie.getName(), cookie.getValue());
+        }
+        return cookiesMap;
     }
 }
